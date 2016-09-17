@@ -20,11 +20,21 @@ int main(int argc, char* argv[])
     long timestamps_s[10000];
     long timestamps_ns[10000];
 
+    long sec_elapsed[10000];
+    int ms_elapsed[10000];
+    int us_elapsed[10000];
+
     for (i = 0; i < 10000; i++)
     {
         emg_driver_get_samples(emg_config, &data);
+
         timestamps_s[i] = data.timestamp_s;
         timestamps_ns[i] = data.timestamp_ns;
+
+        sec_elapsed[i] = data.sec_elapsed;
+        ms_elapsed[i] = data.ms_elapsed;
+        us_elapsed[i] = data.us_elapsed;
+
         for (j = 0; j < 4; j++)
         {
             data_array[j][i] = data.channels[j];
@@ -47,9 +57,19 @@ int main(int argc, char* argv[])
 */
     for (i = 0; i < 10000; i++)
     {
-        printf("%ld,%ld,%f,%f,%f,%f\n",
+/*
+           printf("%ld,%ld,%f,%f,%f,%f\n",
                timestamps_s[i],
                timestamps_ns[i],
+               filtered_data[0][i],
+               filtered_data[1][i],
+               filtered_data[2][i],
+               filtered_data[3][i]);
+*/
+           printf("%ld,%d,%d,%f,%f,%f,%f\n",
+               sec_elapsed[i],
+               ms_elapsed[i],
+               us_elapsed[i],
                filtered_data[0][i],
                filtered_data[1][i],
                filtered_data[2][i],

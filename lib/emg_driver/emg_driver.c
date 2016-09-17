@@ -16,6 +16,10 @@ static const uint8_t SOH = 0x01;
 static const uint8_t EOT = 0x04;
 static const speed_t BAUDRATE = B460800;
 
+/* global data used throughout */
+static time_t start_sec = (time_t) 0;   /* start second saved here */ 
+static int start = 1; /* flag which is used to save the start second */
+
 /* Helper functions */
 
 static char read_byte(int fd)
@@ -46,6 +50,17 @@ static double parse_data(char packet2, char packet3, char packet4)
     }
     
     return temp_voltage;
+}
+
+void get_mytime(struct timespec* spec, struct my_time* mytime){  
+    long ns = spec->tv_nsec;
+    long sec = (long) (spec->tv_sec - start_sec);
+    int ms = (int) (ns / 1000000);
+    int us = (int) ((ns - ms * 1000000)/1000);
+
+    mytime->sec_elapsed = sec; 
+    mytime->ms_elapsed = ms; 
+    mytime->us_elapsed = us; 
 }
 
 /* Library functions */
@@ -132,9 +147,23 @@ void emg_driver_get_samples(struct emg_driver* config, struct emg_data *data)
     if (data_count == 12) /* 12 bytes of data per packet */
     {
         struct timespec spec;
+        struct my_time mytime;
+
         clock_gettime(CLOCK_REALTIME, &spec);
+        if(start){
+            start = 0;
+            start_sec = spec.tv_sec;
+        }        
+
+        get_mytime(&spec, &mytime);
+
         data->timestamp_s = spec.tv_sec;
         data->timestamp_ns = spec.tv_nsec;
+
+        data->sec_elapsed = mytime.sec_elapsed;
+        data->ms_elapsed = mytime.ms_elapsed;
+        data->us_elapsed = mytime.us_elapsed;
+
         for (i = 0; i < 4; i++)
         {
             data->channels[i] = parse_data(packet[3 * i],
