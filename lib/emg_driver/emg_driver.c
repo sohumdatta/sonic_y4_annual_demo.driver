@@ -93,6 +93,7 @@ void emg_driver_get_samples(struct emg_driver* config, struct emg_data *data)
 {
     tcflush(config->fd, TCIFLUSH); /* Flush */
 
+    int i;
     char c_data = 0;
     char p_data = 0;
     char packet[256];
@@ -134,7 +135,7 @@ void emg_driver_get_samples(struct emg_driver* config, struct emg_data *data)
         clock_gettime(CLOCK_REALTIME, &spec);
         data->timestamp_s = spec.tv_sec;
         data->timestamp_ns = spec.tv_nsec;
-        for (int i = 0; i < 4; i++)
+        for (i = 0; i < 4; i++)
         {
             data->channels[i] = parse_data(packet[3 * i],
                                            packet[3 * i + 1],

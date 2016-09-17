@@ -17,6 +17,7 @@
 
 int main(int argc, char* argv[])
 {
+    int i, j;
     //!< the serial port assumed is rfcomm0, usually the default
     struct emg_driver* emg_config = emg_driver_init("/dev/rfcomm0");	
 	    
@@ -26,12 +27,12 @@ int main(int argc, char* argv[])
     double data_array[4][SAMPLE_LEN];
     long timestamps_s[SAMPLE_LEN];
     long timestamps_ns[SAMPLE_LEN];
-    for (int i = 0; i < SAMPLE_LEN; i++)
+    for (i = 0; i < SAMPLE_LEN; i++)
     {
         emg_driver_get_samples(emg_config, &data);
         timestamps_s[i] = data.timestamp_s;
         timestamps_ns[i] = data.timestamp_ns;
-        for (int j = 0; j < 4; j++)
+        for (j = 0; j < 4; j++)
         {
             data_array[j][i] = data.channels[j];
         }
@@ -39,7 +40,7 @@ int main(int argc, char* argv[])
     emg_driver_deinit(emg_config);
 
     double filtered_data[4][SAMPLE_LEN];
-    for (int i = 0; i < 4; i++)
+    for (i = 0; i < 4; i++)
     {
         iir_filter(data_array[i], filtered_data[i], SAMPLE_LEN);
     }

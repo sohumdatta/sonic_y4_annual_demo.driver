@@ -17,9 +17,10 @@ static int min(int a, int b)
 
 static double fir_filter(double state[], const int state_length, const double coefficients[], const int coefficients_length)
 {
+    int i;
     double output = 0.0;
     
-    for (int i = 0; i < min(state_length, coefficients_length); i++)
+    for (i = 0; i < min(state_length, coefficients_length); i++)
     {
         output += state[i] * coefficients[i];
     }
@@ -29,11 +30,11 @@ static double fir_filter(double state[], const int state_length, const double co
 
 void iir_filter(double input[], double output[], int length)
 {
-    int input_length;
+    int input_length, i;
     double bo = 0.0;
     double ao = 0.0;
 
-    for (int i = 0; i < length; i++)
+    for (i = 0; i < length; i++)
     {
         ao = fir_filter(input, i, default_a, default_a_length);
         bo = fir_filter(input, i, default_b, default_b_length);

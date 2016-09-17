@@ -6,6 +6,7 @@
 
 int main(int argc, char* argv[])
 {
+    int i, j;
     struct emg_driver* emg_config = emg_driver_init("/dev/rfcomm0");
     if (!emg_config)
     {
@@ -15,12 +16,12 @@ int main(int argc, char* argv[])
     double data_array[4][10000];
     long timestamps_s[10000];
     long timestamps_ns[10000];
-    for (int i = 0; i < 10000; i++)
+    for (i = 0; i < 10000; i++)
     {
         emg_driver_get_samples(emg_config, &data);
         timestamps_s[i] = data.timestamp_s;
         timestamps_ns[i] = data.timestamp_ns;
-        for (int j = 0; j < 4; j++)
+        for (j = 0; j < 4; j++)
         {
             data_array[j][i] = data.channels[j];
         }
@@ -35,12 +36,12 @@ int main(int argc, char* argv[])
     emg_driver_deinit(emg_config);
 
     double filtered_data[4][10000];
-    for (int i = 0; i < 4; i++)
+    for (i = 0; i < 4; i++)
     {
         iir_filter(data_array[i], filtered_data[i], 10000);
     }
 
-    for (int i = 0; i < 10000; i++)
+    for (i = 0; i < 10000; i++)
     {
         printf("%ld,%ld,%f,%f,%f,%f\n",
                timestamps_s[i],
