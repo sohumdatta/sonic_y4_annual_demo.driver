@@ -13,9 +13,13 @@ int main(int argc, char* argv[])
         return -1;
     }
     struct emg_data data;
+
     double data_array[4][10000];
+    double filtered_data[4][10000];
+
     long timestamps_s[10000];
     long timestamps_ns[10000];
+
     for (i = 0; i < 10000; i++)
     {
         emg_driver_get_samples(emg_config, &data);
@@ -24,6 +28,7 @@ int main(int argc, char* argv[])
         for (j = 0; j < 4; j++)
         {
             data_array[j][i] = data.channels[j];
+            filtered_data[j][i] = iir_filter(data_array[j][i]);
         }
         /*printf("%ld,%ld,%f,%f,%f,%f\n",
                data.timestamp_s,
@@ -35,12 +40,11 @@ int main(int argc, char* argv[])
     }
     emg_driver_deinit(emg_config);
 
-    double filtered_data[4][10000];
-    for (i = 0; i < 4; i++)
+/*    for (i = 0; i < 4; i++)
     {
         iir_filter(data_array[i], filtered_data[i], 10000);
     }
-
+*/
     for (i = 0; i < 10000; i++)
     {
         printf("%ld,%ld,%f,%f,%f,%f\n",
