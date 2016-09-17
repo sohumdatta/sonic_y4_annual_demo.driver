@@ -60,6 +60,13 @@ double iir_filter(double input)
     double bo = 0.0;
     double ao = 0.0;
 
+    /* TODO: comment, only testing */
+/*    printf("y_values: ");
+    for (i = 0; i < default_a_length; i++) printf("\t%f", y_values[i]);
+    printf("; \tx_values: ");
+    for (i = 0; i < default_b_length; i++) printf("\t%f", x_values[i]);
+    printf("\n");
+*/    
     /* shift the inputs for input data */
     for (i = default_b_length; i > 0; i--) x_values[i] = x_values[i-1];
     x_values[0] = input;
