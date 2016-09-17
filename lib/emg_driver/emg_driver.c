@@ -91,7 +91,7 @@ void emg_driver_deinit(struct emg_driver* config)
 
 void emg_driver_get_samples(struct emg_driver* config, struct emg_data *data)
 {
-    /*tcflush(config->fd, TCIFLUSH); /* Flush */
+    tcflush(config->fd, TCIFLUSH); /* Flush */
 
     char c_data = 0;
     char p_data = 0;
