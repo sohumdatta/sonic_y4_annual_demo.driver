@@ -1,11 +1,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <signal.h>
+#include <unistd.h>
 #include <errno.h>
 #include "emg_driver.h"
 #include "dsp.h"
 #include "collect_data.h"
 
+int collect = 1;
+
+void sighandler(int signum){ collect = 0;}
 
 void main(int argc, char* argv[])
 {
@@ -14,15 +19,6 @@ void main(int argc, char* argv[])
     struct emg_driver* emg_config = (struct emg_driver*) NULL;  /* emg driver config */
     int i, j;
     
-
-    errno = 0;
-    fp = fopen(OUTPUT_FILE, "w+");
-    if(fp == NULL){
-        perror("Error opening file:");
-        return;
-    }
-    emg_config = emg_driver_init("/dev/rfcomm0");
-
     struct emg_data data;
     struct filtered_data filteredData;
 
@@ -33,6 +29,15 @@ void main(int argc, char* argv[])
     int ms_elapsed;
     int us_elapsed;
 
+    errno = 0;
+    fp = fopen(OUTPUT_FILE, "w+");
+    if(fp == NULL){
+        perror("Error opening output file");
+        return;
+    }
+
+    emg_config = emg_driver_init("/dev/rfcomm0");
+
     if (!emg_config)
     {
         printf("Error: emg driver not configured, exit!\n");
@@ -40,9 +45,10 @@ void main(int argc, char* argv[])
     }
 
 
-    printf("Printing raw and processed values to file '%s', press Ctrl-C to stop.\n", OUTPUT_FILE);
-
-    while(1)
+    printf("Collecting and processing EMG data, press Ctrl-C to stop.\n", OUTPUT_FILE);
+    signal(SIGINT, sighandler);
+    
+    while(collect)
     {
         emg_driver_get_samples(emg_config, &data);
 
@@ -71,4 +77,11 @@ void main(int argc, char* argv[])
                filtered_data_array[2],
                filtered_data_array[3]);
     } /* while(1) */
+    printf("\n\nInterrupt signal caught, closing file and bluetooth controller.\n");
+
+    errno = 0;
+    if(fclose(fp) == -1) {perror("Error closing output file"); return;}
+
+    emg_driver_deinit(emg_config); 
+    printf("Data in '%s'\nPlease save it as it will be overwritten before re-run.\n", OUTPUT_FILE);
 }
