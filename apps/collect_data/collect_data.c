@@ -1,30 +1,25 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
-#include <signal.h>
+#include <errno.h>
 #include "emg_driver.h"
 #include "dsp.h"
 #include "collect_data.h"
 
 
-/* signal handler, closes file written to and deinitializes emg driver */
-/*void sighandler(int signum){
-    printf("Caught an interrupt %d, closing write file and deinitializing Bluetooth.", signum);
-    emg_driver_deinit(emg_config);
-    fclose(fp); 
-}
-*/
 void main(int argc, char* argv[])
 {
+    
     FILE * fp = (FILE*) NULL;  /* file pointer to the output file */
     struct emg_driver* emg_config = (struct emg_driver*) NULL;  /* emg driver config */
-    
     int i, j;
-    fp = fopen("dump", "w");
-    while(fp == NULL){
-         printf("Opening file %s failed retrying\n", OUTPUT_FILE);
-        fp = fopen("dump", "w");
+    
+
+    errno = 0;
+    fp = fopen(OUTPUT_FILE, "w+");
+    if(fp == NULL){
+        perror("Error opening file:");
+        return;
     }
     emg_config = emg_driver_init("/dev/rfcomm0");
 
@@ -44,14 +39,13 @@ void main(int argc, char* argv[])
         return;
     }
 
-    /* signal(SIGINT, sighandler); */
+
+    printf("Printing raw and processed values to file '%s', press Ctrl-C to stop.\n", OUTPUT_FILE);
+
     while(1)
     {
         emg_driver_get_samples(emg_config, &data);
 
-/*        timestamps_s[i] = data.timestamp_s;
-        timestamps_ns[i] = data.timestamp_ns;
-*/
         sec_elapsed = data.sec_elapsed;
         ms_elapsed = data.ms_elapsed;
         us_elapsed = data.us_elapsed;
@@ -63,16 +57,8 @@ void main(int argc, char* argv[])
             filtered_data_array[j] = iir_filter(data_array[j]);
 /*            filteredData.channel[j] = iir_filter(data_array[j][i]); */
         }
-        /*printf("%ld,%ld,%f,%f,%f,%f\n",
-               data.timestamp_s,
-               data.timestamp_ns,
-               data.channels[0],
-               data.channels[1],
-               data.channels[2],
-               data.channels[3]);*/
 
-
-           fprintf(fp, "%ld,%d,%d,\t%f,%f,%f,%f,\t%f,%f,%f,%f\n",
+           fprintf(fp, "%ld,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f\n",
                sec_elapsed,
                ms_elapsed,
                us_elapsed,
@@ -84,6 +70,5 @@ void main(int argc, char* argv[])
                filtered_data_array[1],
                filtered_data_array[2],
                filtered_data_array[3]);
-        printf("reaches here\n"); /**** PROBE ****/
     } /* while(1) */
 }

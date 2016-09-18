@@ -1,7 +1,7 @@
 /* collection of setup files used by the collection C routine */
 
 /* file including path */
-#define OUTPUT_FILE "~/sonic_y4_annual_demo/bluetooth/run/latest_emg_data.txt"
+const char OUTPUT_FILE[] =  "/home/abbas/sonic_y4_annual_demo/bluetooth/run/latest_emg_data.txt";
 
 /* structure to save the filtered data with the time stamps */
 struct filtered_data{
