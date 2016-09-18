@@ -6,10 +6,10 @@
 #include <signal.h>
 #include <unistd.h>
 /* Shared memory implementation */
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <pthread.h>
 #include "emg_driver.h"
 #include "dsp.h"
 #include "collect_data.h"
@@ -27,23 +27,37 @@ void main(int argc, char* argv[])
     
     struct emg_data data;
     struct filtered_data filteredData;
-    struct filtered_data* data_ptr = (struct filtered_data*) NULL;
+    struct shared* data_ptr = (struct shared*) NULL;
+
 
     int shmid;
     size_t filteredData_size = sizeof(filteredData);    
     
-    /* Generate key for sharing filteredData */
-    errno = 0;
-    key_t key = ftok(OUTPUT_FILE, 'R');
-    if(key == -1) {perror("ftok"); return;}
-    
-    /* create a shared memory (MAY CREATE)*/
-    if((shmid = shmget(key, filteredData_size, 0644 | IPC_CREAT | IPC_EXCL)) == -1)
-    {perror("shmget"); return;}
+    /* create a shared memory (MUST CREATE)*/
+    if((shmid = shm_open(SHARED_RESOURCE, O_CREAT | O_TRUNC | O_RDWR , 0600)) == -1)
+    {perror("shm_open"); return;}
+    ftruncate(shmid, sizeof(struct shared));
 
     /* attach to the shared memory (CAN READ OR WRITE)*/
-    data_ptr = (struct filtered_data*) shmat(shmid, (void*) 0, 0);
-    if(data_ptr == (struct filtered_data*) (-1)) {perror("shmat"); return;}
+    data_ptr = (struct shared *) mmap(0, sizeof(struct shared),
+                PROT_READ | PROT_WRITE, MAP_SHARED, shmid, 0);
+    if(data_ptr == (struct shared*) (-1)) {perror("mmap"); return;}
+
+    /**** initialized shared resource ****/
+    /* initialize structure values */
+    data_ptr->filteredData.sec_elapsed = 0; 
+    data_ptr->filteredData.ms_elapsed = 0; 
+    data_ptr->filteredData.us_elapsed = 0; 
+    for(j=0;j<4;j++) data_ptr->filteredData.channels[j] = 0.0; 
+
+
+    /* make sure the mutex can be shared across processes */
+    pthread_mutexattr_t shared_mutex_attr;
+    pthread_mutexattr_init(&shared_mutex_attr);
+    pthread_mutexattr_setpshared(&shared_mutex_attr, PTHREAD_PROCESS_SHARED);
+
+    /* setup threads */
+    pthread_mutex_init(&(data_ptr->mutex), &shared_mutex_attr);
 
 
     double data_array[4];
@@ -80,22 +94,38 @@ void main(int argc, char* argv[])
         ms_elapsed = data.ms_elapsed;
         us_elapsed = data.us_elapsed;
 
-        filteredData.sec_elapsed = sec_elapsed;
-        filteredData.ms_elapsed = ms_elapsed;
-        filteredData.us_elapsed = us_elapsed;
+
+        /*******************************************
+        *  CRITICAL SECTION BEGINS
+        ********************************************/
+        /* acquire MUTEX for critical section */
+        pthread_mutex_lock(&(data_ptr->mutex));
+
+        /* assign timing info to shared resource */
+        data_ptr->filteredData.sec_elapsed = sec_elapsed;
+        data_ptr->filteredData.ms_elapsed = ms_elapsed;
+        data_ptr->filteredData.us_elapsed = us_elapsed;
 
         for (j = 0; j < 4; j++)
         {
             data_array[j] = data.channels[j];
             filtered_data_array[j] = iir_filter(data_array[j]);
-            filteredData.channels[j] = iir_filter(data_array[j]); 
+            
+            /* assign filtered channel values to shared resource */
+            data_ptr->filteredData.channels[j] = filtered_data_array[j]; 
         }
+        /* release MUTEX on exiting critical section */
+        pthread_mutex_unlock(&(data_ptr->mutex));
+        /*******************************************
+        *  CRITICAL SECTION ENDS
+        ********************************************/
+
 
         /* copy to shared memory so that another process can read it */
-        memcpy(data_ptr, &filteredData, filteredData_size);
+        /* memcpy(data_ptr, &filteredData, filteredData_size); */
 
         /* print raw values collected to the file */
-           fprintf(fp, "%ld,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f\n",
+        fprintf(fp, "%ld,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f\n",
                sec_elapsed,
                ms_elapsed,
                us_elapsed,
@@ -107,16 +137,19 @@ void main(int argc, char* argv[])
                filtered_data_array[1],
                filtered_data_array[2],
                filtered_data_array[3]);
+    
+        /* this is required for safe file flushing*/
+        fflush(fp);
     } /* while(1) */
     printf("\n\nInterrupt signal caught, closing file and bluetooth controller.\n");
 
     if(fclose(fp) == -1) {perror("Error closing output file"); return;}
 
-    /* detach the shred memory */
-    if(shmdt(data_ptr) == -1) {perror("shmdt"); return;} 
+    /* detach the shared memory */
+    if(munmap(data_ptr, sizeof(struct shared*)) == -1) {perror("munmap"); return;} 
 
     /* destroy shmid for shared memory */
-    if(shmctl(shmid, IPC_RMID, (void*) NULL) == -1) {perror("shmctl"); return;} 
+    if(shm_unlink(SHARED_RESOURCE) == -1) {perror("shm_unlink"); return;} 
     
     /* de-initialize bluetooth driver */
     emg_driver_deinit(emg_config); 
