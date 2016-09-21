@@ -11,6 +11,7 @@ struct filtered_data{
     int ms_elapsed;
     int us_elapsed;
     double channels[4];
+    double raw_channels[4];
 };
 
 struct shared {

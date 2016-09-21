@@ -126,6 +126,9 @@ void main(int argc, char* argv[])
             
             /* assign filtered channel values to shared resource */
             data_ptr->filteredData.channels[j] = filtered_data_array[j]; 
+
+            /* assign raw channel values to shared resource */
+            data_ptr->filteredData.raw_channels[j] = data_array[j]; 
         }
         /* release MUTEX on exiting critical section */
         pthread_mutex_unlock(&(data_ptr->mutex));

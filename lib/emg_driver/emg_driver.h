@@ -10,6 +10,7 @@ struct emg_data
     time_t timestamp_s;
     long timestamp_ns;
     double channels[4];
+
     long sec_elapsed;
     int ms_elapsed;
     int us_elapsed;
