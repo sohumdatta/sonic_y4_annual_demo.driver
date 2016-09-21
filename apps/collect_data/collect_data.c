@@ -2,6 +2,7 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include <stdlib.h>
 /* signal handling */
 #include <signal.h>
 #include <unistd.h>
@@ -28,7 +29,19 @@ void main(int argc, char* argv[])
     struct emg_data data;
     struct filtered_data filteredData;
     struct shared* data_ptr = (struct shared*) NULL;
+	
+	struct iir_state_t iir_state[4];	/* state values stored for the 4 channels */
+	/* initialize the stored initial channel values to zeros */
+	for(i=0; i < 4; i++){
+		iir_state[i].x_values = (double *) malloc(X_LEN * sizeof(double));
+		iir_state[i].x_len = X_LEN;
 
+		iir_state[i].y_values = (double *) malloc(Y_LEN * sizeof(double));
+		iir_state[i].y_len = Y_LEN;
+
+		for(j=0; j < iir_state[i].x_len; j++) iir_state[i].x_values[j] = 0.0;
+		for(j=0; j < iir_state[i].y_len; j++) iir_state[i].y_values[j] = 0.0;
+	}
 
     int shmid;
     size_t filteredData_size = sizeof(filteredData);    
@@ -83,7 +96,7 @@ void main(int argc, char* argv[])
     }
 
 
-    printf("Collecting and processing EMG data, press Ctrl-C to stop.\n", OUTPUT_FILE);
+    printf("Collecting and processing EMG data, press Ctrl-C to stop.\n");
     signal(SIGINT, sighandler);
     
     while(collect)
@@ -109,7 +122,7 @@ void main(int argc, char* argv[])
         for (j = 0; j < 4; j++)
         {
             data_array[j] = data.channels[j];
-            filtered_data_array[j] = iir_filter(data_array[j]);
+            filtered_data_array[j] = iir_filter(data_array[j], &iir_state[j]);
             
             /* assign filtered channel values to shared resource */
             data_ptr->filteredData.channels[j] = filtered_data_array[j]; 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdlib.h>
 #include "emg_driver.h"
 #include "dsp.h"
 
@@ -13,6 +14,19 @@ int main(int argc, char* argv[])
         return -1;
     }
     struct emg_data data;
+	struct iir_state_t iir_state[4];	/* state values stored for the 4 channels */
+	/* initialize the stored initial channel values to zeros */
+	for(i=0; i < 4; i++){
+		iir_state[i].x_values = (double *) malloc(X_LEN * sizeof(double));
+		iir_state[i].x_len = X_LEN;
+
+		iir_state[i].y_values = (double *) malloc(Y_LEN * sizeof(double));
+		iir_state[i].y_len = Y_LEN;
+
+		for(j=0; j < iir_state[i].x_len; j++) iir_state[i].x_values[j] = 0.0;
+		for(j=0; j < iir_state[i].y_len; j++) iir_state[i].y_values[j] = 0.0;
+	}
+
 
     double data_array[4][10000];
     double filtered_data[4][10000];
@@ -38,7 +52,7 @@ int main(int argc, char* argv[])
         for (j = 0; j < 4; j++)
         {
             data_array[j][i] = data.channels[j];
-            filtered_data[j][i] = iir_filter(data_array[j][i]);
+            filtered_data[j][i] = iir_filter(data_array[j][i], &iir_state[j]);
         }
         /*printf("%ld,%ld,%f,%f,%f,%f\n",
                data.timestamp_s,

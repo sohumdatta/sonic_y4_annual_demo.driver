@@ -51,8 +51,21 @@ static double fir_filter(double state[], const int state_length, const double co
 }
 
 
-/*void iir_filter(double input, double output, int length) */
-double iir_filter(double input)
+/*
+ * The IIR function below take a structure that stores the most recent 7 x_values and 6 y_values (save one of this instant)
+ * it also takes in the current input value, and returns the current output value.
+ * Note that the structure contents are updated during the run.
+ *
+ * x_values and y_values are arrays that store the latest values of x and y.
+ * both are implemented as a queue, x_values[0] = x[n], x_values[1] = x[n-1]...
+ * similarly, y_values[0] = y[n-1], y_values[1] = y[n-2] ...
+ * 
+ * then, 
+ * bo = b[0] x_values[0] + b[1] x_values[1] + ...
+ * ao = a[0] y_values[0] + a[1] y_values[1] + ...
+ */
+
+double iir_filter(double input, struct iir_state_t * iir_state)
 {
     
     int i;
@@ -60,24 +73,17 @@ double iir_filter(double input)
     double bo = 0.0;
     double ao = 0.0;
 
-    /* TODO: comment, only testing */
-/*    printf("y_values: ");
-    for (i = 0; i < default_a_length; i++) printf("\t%f", y_values[i]);
-    printf("; \tx_values: ");
-    for (i = 0; i < default_b_length; i++) printf("\t%f", x_values[i]);
-    printf("\n");
-*/    
     /* shift the inputs for input data */
-    for (i = default_b_length; i > 0; i--) x_values[i] = x_values[i-1];
-    x_values[0] = input;
+    for (i = iir_state->x_len; i > 0; i--) iir_state->x_values[i] = iir_state->x_values[i-1];
+    	iir_state->x_values[0] = input;
 
-    bo = fir_filter(x_values, default_b_length, default_b, default_b_length);
-    ao = fir_filter(y_values, default_a_length, default_a, default_a_length);
+    bo = fir_filter(iir_state->x_values, iir_state->x_len, default_b, default_b_length);
+    ao = fir_filter(iir_state->y_values, iir_state->y_len, default_a, default_a_length);
     output = bo - ao;
 
     /* shift the outputs for output data, for the next iteration */
-    for (i = default_a_length; i > 0; i--) y_values[i] = y_values[i-1];
-    y_values[0] = output;
+    for (i = iir_state->y_len; i > 0; i--) iir_state->y_values[i] = iir_state->y_values[i-1];
+    iir_state->y_values[0] = output;
 
     return output;
 }

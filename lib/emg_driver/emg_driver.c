@@ -38,13 +38,13 @@ static double parse_data(char packet2, char packet3, char packet4)
     
     if (num < 8388607)
     {
-        temp_voltage = (num * 3.3 * 1000) / 8388607.0;
+        temp_voltage = ((double) num * 3.3 * 1000) / 8388607.0;
     }
     else
     {
         num = (16777215 - num) + 1;
         temp_voltage = num;
-        temp_voltage = (num * 3.3 * 1000) / 8388607.0;
+        temp_voltage = ((double) num * 3.3 * 1000) / 8388607.0;
         
         temp_voltage *= -1;
     }
@@ -114,61 +114,76 @@ void emg_driver_get_samples(struct emg_driver* config, struct emg_data *data)
     char packet[256];
     memset(packet, 0, 256);
     int data_count = 0;
-    while (((p_data != DLE) || (c_data != SOH)))
-    {
-        p_data = c_data;
-        c_data = read_byte(config->fd);
-        if ((p_data == DLE) && (c_data == DLE))
-        {
-            p_data = c_data;
-            c_data = read_byte(config->fd);
-        }
-    }
-    while (((p_data != DLE) || (c_data != EOT)))
-    {
-        p_data = c_data;
-        c_data = read_byte(config->fd);
 
-        if (c_data != DLE)
-        {
-            packet[(data_count++) % 256] = c_data;
-        }
-        else
-        {
-            p_data = c_data;
-            c_data = read_byte(config->fd);
-            if (c_data == DLE)
-            {
-                packet[(data_count++) % 256] = c_data;
-            }
-        }
-    }
+	while(data_count != 12)
+	{	
+	/* there are 12 bytes padded by HEADER and FOOTER in the stream */
+    	c_data = 0;
+    	p_data = 0;
+    	memset(packet, 0, 256);
+    	data_count = 0;
+    	while (((p_data != DLE) || (c_data != SOH)))
+    	{
+        	p_data = c_data;
+        	c_data = read_byte(config->fd);
+        	if ((p_data == DLE) && (c_data == DLE))
+        	{
+            	p_data = c_data;
+            	c_data = read_byte(config->fd);
+        	}
+    	}
+    	while (((p_data != DLE) || (c_data != EOT)))
+    	{
+        	p_data = c_data;
+        	c_data = read_byte(config->fd);
 
-    if (data_count == 12) /* 12 bytes of data per packet */
-    {
-        struct timespec spec;
-        struct my_time mytime;
+        	if (c_data != DLE)
+        	{
+            	packet[(data_count++) % 256] = c_data;
+        	}
+        	else
+        	{
+            	p_data = c_data;
+            	c_data = read_byte(config->fd);
+            	if (c_data == DLE)
+            	{
+                	packet[(data_count++) % 256] = c_data;
+            	}
+        	}
+    	}
 
-        clock_gettime(CLOCK_REALTIME, &spec);
-        if(start){
-            start = 0;
-            start_sec = spec.tv_sec;
-        }        
+		/*
+ 		* If data_count != 12 at this point, the packet may be corrupted.
+ 		* drop that corupted packet and fetch the next
+ 		*/
 
-        get_mytime(&spec, &mytime);
 
-        data->timestamp_s = spec.tv_sec;
-        data->timestamp_ns = spec.tv_nsec;
+    	if (data_count == 12) /* 12 bytes of data per packet */
+   	 	{
+        	struct timespec spec;
+        	struct my_time mytime;
 
-        data->sec_elapsed = mytime.sec_elapsed;
-        data->ms_elapsed = mytime.ms_elapsed;
-        data->us_elapsed = mytime.us_elapsed;
+        	clock_gettime(CLOCK_REALTIME, &spec);
+        	if(start){
+            	start = 0;
+            	start_sec = spec.tv_sec;
+        	}        
 
-        for (i = 0; i < 4; i++)
-        {
-            data->channels[i] = parse_data(packet[3 * i],
+        	get_mytime(&spec, &mytime);
+
+        	data->timestamp_s = spec.tv_sec;
+        	data->timestamp_ns = spec.tv_nsec;
+
+        	data->sec_elapsed = mytime.sec_elapsed;
+        	data->ms_elapsed = mytime.ms_elapsed;
+        	data->us_elapsed = mytime.us_elapsed;
+
+        	for (i = 0; i < 4; i++)
+        	{
+            	data->channels[i] = parse_data(packet[3 * i],
                                            packet[3 * i + 1],
                                            packet[3 * i + 2]);
-        }
-   }
+        	}
+   		}
+	}	 /* while(data_count != 12) */
 }
