@@ -1,7 +1,7 @@
 /* collection of setup files used by the collection C routine */
 
 /* file including path */
-const char OUTPUT_FILE[] =  "/home/abbas/sonic_y4_annual_demo/run/latest_emg_data.txt";
+const char OUTPUT_FILE[] =  "/home/abbas/sonic_y4_annual_demo/asl/run/latest_emg_data.txt";
 
 const char SHARED_RESOURCE[] =  "/dummy_shared";
 
